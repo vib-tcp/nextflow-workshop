@@ -217,12 +217,12 @@ Contributors
 | Chapter | Title                                                   |
 | :---- | :------------------------------------------------         |
 | 0     | [Getting Ready](#get-ready-for-the-course)  |
-| 1     | [Building blocks](#17)  |
-| 2     | [Executing pipelines](#26)  |
-| 3     | [Creating first pipeline](#32)  |
-| 4     | [Configuration files](#38)  |
-| 5     | [Creating reports](#47)  |
-| 6     | [Project](#49)  |
+| 1     | [Building blocks](#building-blocks)  |
+| 2     | [Executing pipelines](#executing-pipelines)  |
+| 3     | [Creating first pipeline](#creating-our-first-pipeline)  |
+| 4     | [Configuration files](#configuration-files)  |
+| 5     | [Creating reports](#creating-reports)  |
+| 6     | [Project](#project)  |
 
 ## Get ready for the course
 
@@ -407,13 +407,13 @@ Writing pipelines to automate processes is not something new, Bash scripts are p
 ```bash
 #!/bin/bash
 
-blastp -query sample.fasta -outfmt 6 \
-	| head -n 10 \
-	| cut -f 2 \
-	| blastdbcmd -entry - > sequences.txt
+cat data.tsv \
+    | head -n 10 \
+    | cut -d'\t' -f 2 \
+    > third_column.tsv
 ```
 
-Starting with a shebang line, the `blastp` command is piped through multiple times to eventually result in an output file `sequences.txt`.
+Starting with a [shebang line](https://www.baeldung.com/linux/shebang-types), this script will take the first 10 lines of the `data.tsv` file, extract the third column and write it to a new file called `third_column.tsv`.
 
 <details>
 
@@ -454,14 +454,14 @@ Some thoughts or disadvantages from my personal point of view. It takes some tim
 ### Main abstractions
 Nextflow consists of four main components: channels, operators, processes and workflows.
 
-- *Channels*: contain the input of the workflows used by the processes. Channels connect processes with each other.
-- *Operators*: transform the content of channels by applying functions or transformations. Usually operators are applied on channels to get the input of a process in the right format.
-- *Processes*: define the piece of script that is actually being run (e.g. an alignment process with STAR).
-- *Workflows*: call the processes as functions with channels as input arguments, only processes defined in the workflow are run.
+- *Processes*: **execute** a piece of code (script, command line tool, etc.) using the input from channels.
+- *Channels*: **connect** processes using dataflows.
+- *Operators*: **rearrange** the content of channels by applying functions or transformations.
+- *Workflows*: **compose** the logic of the pipeline by combining processes, channels and operators.
 
 ![](docs/img/nextflow/nextflow-conceptually.png)
 
-The script [`exercises/01_building_blocks/firstscript.nf`](https://github.com/vibbits/nextflow-workshop/blob/main/exercises/01_building_blocks/firstscript.nf) is using these three components and gives an idea of how Nextflow scripts are being build.
+The script [`exercises/01_building_blocks/firstscript.nf`](./exercises/01_building_blocks/firstscript.nf) is using these three components and gives an idea of how Nextflow scripts are being build.
 
 ```groovy
 #!/usr/bin/env nextflow
@@ -498,32 +498,31 @@ workflow {
 Besides these main building blocks, we also already highlight the existence of the `params` parameters. In the previous code block we explicitly defined some input values in the channels. However, we can define the input values into a parameter instead, that is passed on to the channel.
 
 ```groovy
-// create a parameter 'input_read'
-params.input_read = '/path/to/read_1.fq'
+// create a parameter 'input'
+params.input = '/path/to/input.tsv'
 
-// use the input_read parameter as an input for the channel
-def input_read_ch = Channel.fromPath(params.input_read)
+// use the input parameter as an input for the channel
+def input_ch = Channel.fromPath(params.input)
 ```
-Here `params.input_read = '/path/to/read_1.fq'` will create a parameter `input_read` and give it the value `'/path/to/read_1.fq'` which is used as an input for the channel. We will later see that these parameters can then be overwritten on runtime.
+Here `params.input = '/path/to/input.tsv'` will create a parameter `input` and give it the value `'/path/to/input.tsv'` which is used as an input for the channel. We will later see that these parameters can then be overwritten on runtime.
 </div>
 
 
 #### 1. Channels
-The input of the analysis is stored in a channel, these are generally files like sequencing, reference fasta, annotation files, etc. however the input can be of any kind like numbers, strings, lists, etc. To have a complete overview, we refer to the official documentation\[[4](https://www.nextflow.io/docs/latest/channel.html#)\]. Here are some examples of how a channel is being created:
+The input of the analysis is stored in a channel, these are generally files, however the input can be of any kind like numbers, strings, lists, etc. To have a complete overview, we refer to the official documentation\[[4](https://www.nextflow.io/docs/latest/channel.html#)\]. Here are some examples of how a channel can be created using channel factories:
 
 ```groovy
 // Channel consisting of strings
 def strings_ch = Channel.of('This', 'is', 'a', 'channel')
 
 // Channel consisting of a single file
-def file_ch = Channel.fromPath('data/sequencefile.fastq')
+def file_ch = Channel.fromPath('data/file.txt')
 
 // Channel consisting of multiple files by using a wildcard *
-def multfiles_ch = Channel.fromPath('data/*.fastq')
-
-// Create a channel structure from file pairs
-def pairs_ch = Channel.fromFilePairs('data/*{1,2}.fq.gz')
+def multfiles_ch = Channel.fromPath('data/*.txt')
 ```
+
+A full list of all channel factories can be found in the [documentation](https://www.nextflow.io/docs/latest/reference/channel.html#channel-factory).
 
 These channels can then be used by operators or serve as an input for the processes.
 
@@ -537,18 +536,10 @@ These channels can then be used by operators or serve as an input for the proces
 
 **Reminder: Run all exercises from the root nextflow-workshop folder**
 
-Inspect and edit the `exercises/01_building_blocks/template.nf` script. Create a channel consisting of multiple paired-end files. For more information, read [`fromFilePairs`](https://www.nextflow.io/docs/latest/reference/channel.html#fromfilepairs).
+Inspect and edit the `exercises/01_building_blocks/template.nf` script. Create an additional channel containing all files with the `csv` extension located in the `data` directory and view the contents of the channel.
 
 Once the Nextflow script is saved, run it with: `nextflow run exercises/01_building_blocks/template.nf`.
 
-Paired fastq files are provided in the `data` folder.
-
-<div class="admonition admonition-info">
-<p class="admonition-title">Note</p>
-
-Fastq files can be either single-end or paired-end. DNA is always double-stranded, single-end fastq only contain reads from a single strand, while paired end fastqs are two files, each file contains reads for one strand of the double-stranded DNA.This means in case of paired-end files, there are 2 fastq files per sample.
-
-</div>
 
 *************
 
@@ -557,41 +548,53 @@ Fastq files can be either single-end or paired-end. DNA is always double-strande
 
 **Solution 1.1**
 
-The solution is available in the file `exercises/01_building_blocks/solutions/1.1_template-paired-end.nf`.
+The solution is available in the file `exercises/01_building_blocks/solutions/1.1_fromPath.nf`.
 
-Note that the content of the channel is constructed in a following manner:
+The expected output should look like this:
 
-```bash
-[common-name, [/path/to/read1.fq, /path/to/read2.fq]]
 ```
-This is a `tuple` qualifier which we will use a lot during this workshop and discuss later again.
+This
+is
+a
+channel
+.../nextflow-workshop/data/boardgames.csv
+.../nextflow-workshop/data/crocodile_dataset.csv
+```
 
 *************
 
 
 
-##### Queue and Value channels
+##### Channels vs Values
 
-There are 2 distinct types of channel, Queue channels and Value channels. 
+There are 2 distinct types of dataflows: channels and values.
 
-- Value channels contain a single value (i.e. a string or a number) and can be used within a process any number of times, the value is never consumed. 
-- Queue channels contain one or more elements which will be consumed (used) within a process, once an element is consumed, it cannot be used again within that process. 
+- Dataflow values consist of a single value (i.e. a string or a number) and can be used within a process any number of times, the value is never consumed. 
+- Dataflow channels consist of one or more elements which will be used once within a process, once an element is used, it cannot be used again within that process. 
 
-  - A single queue channel may be used as input to multiple processes in a workflow. 
-  - Queue channels are designed for connecting the output of one process to the input of other processes.
+  - A channel can be used as input to multiple processes. Each process will receive a copy of the channel and use its elements independently.
+  - Channels are designed for connecting the output of one process to the input of other processes.
 
 ```groovy
-# Value Channels
-def value_channel1 = Channel.value(1)
-def value_channel2 = Channel.value("Hello World")
-def value_channel3 = Channel.value(["a", "b", "c"])
+# Values
+def value1 = Channel.value(1)
+def value2 = Channel.value("Hello World")
+def value3 = Channel.value(["a", "b", "c"])
 
-# Queue Channels
-def queue_channel1 = Channel.of('This', 'is', 'a', 'channel')
-def queue_channel2 = Channel.fromPath('/path/to/files/*.txt')
+# Channels
+def channel1 = Channel.of('This', 'is', 'a', 'channel')
+def channel2 = Channel.fromPath('/path/to/files/*.txt')
 
 ```
-More info about value and queue channels can be found in the [documentation](https://www.nextflow.io/docs/latest/channel.html#channel-types).
+
+<div class="admonition admonition-info">
+<p class="admonition-title">Note</p>
+
+In previous versions of Nextflow, channels were often reffered to as queue channels and values were often reffered to as value channels. This terminology is not used anymore in the official documentation, however you might still encounter it in older scripts or documentations.
+
+</div>
+
+More info about values and channels can be found in the [documentation](https://www.nextflow.io/docs/latest/channel.html#channel-types).
 
 #### 2. Operators
 Operators are necessary to transform the content of channels in a format that is necessary for usage in the processes. There are a plethora of different operators[[5](https://www.nextflow.io/docs/latest/operator.html?highlight=view#)], however only a handful are used extensively. Here are some examples that you might come accross:
