@@ -461,7 +461,7 @@ Nextflow consists of four main components: channels, operators, processes and wo
 
 ![](docs/img/nextflow/nextflow-conceptually.png)
 
-The script [`exercises/01_building_blocks/firstscript.nf`](./exercises/01_building_blocks/firstscript.nf) is using these three components and gives an idea of how Nextflow scripts are being build.
+The script [`exercises/01_building_blocks/firstscript.nf`](https://github.com/vibbits/nextflow-workshop/blob/main/exercises/01_building_blocks/firstscript.nf) is using these three components and gives an idea of how Nextflow scripts are being build.
 
 ```groovy
 #!/usr/bin/env nextflow
