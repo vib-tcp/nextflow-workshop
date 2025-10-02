@@ -7,14 +7,11 @@ def samples_ch = Channel
 
 // Inspect a channels contents with the operator .view()
 samples_ch.view()
-samples_ch.view{ row -> tuple(row.sampleId, file(row.forward_read), file(row.reverse_read)) }
+samples_ch.view{ row -> tuple(row.boardgame, row.release_year) }
 
-// read1_ch = samples_ch.map{ row -> tuple(row.sampleId, row.forward_read) }
+def boardgame_ch = samples_ch.map{ row -> row.boardgame }
 
-// By using the file() function, you create a file object from the path strings in the csv file:
-def read1_ch = samples_ch.map{ row -> tuple(row.sampleId, file(row.forward_read)) }
+def release_ch = samples_ch.map{ row -> row.release_year }
 
-def read2_ch = samples_ch.map{ row -> tuple(row.sampleId, file(row.reverse_read)) }
-
-read1_ch.view()
-read2_ch.view()
+boardgame_ch.view()
+release_ch.view()

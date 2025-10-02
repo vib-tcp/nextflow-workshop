@@ -599,12 +599,12 @@ More info about values and channels can be found in the [documentation](https://
 #### 2. Operators
 Operators are necessary to transform the content of channels in a format that is necessary for usage in the processes. There are a plethora of different operators[[5](https://www.nextflow.io/docs/latest/operator.html?highlight=view#)], however only a handful are used extensively. Here are some examples that you might come accross:
 
-- `collect`: e.g. when using a channel consisting of multiple independent files (e.g. fastq-files) and need to be assembled for a next process (output in a list data-type).
+- `collect`: **transforms** a dataflow channel to a dataflow value by concatenating all entries in the channel into one list. e.g. when using a channel consisting of multiple independent files that need to be assembled for a next process
 
 <div class="admonition admonition-info">
 <p class="admonition-title">Note</p>
 
-The nextflow documentation details whether each operator produces a queue channel or a value channel.
+The nextflow documentation details whether each operator produces a dataflow channel or value.
 
 </div>
 
@@ -621,7 +621,7 @@ Channel
 [1,2,3,4]
 ```
 
-- `mix`: e.g. when assembling items from multiple channels into one channel for a next process (e.g. multiqc)
+- `mix`: **combines** multiple dataflow channels into one channel by interleaving their elements.
 
   Example: [`exercises/01_building_blocks/operator_mix.nf`](https://github.com/vibbits/nextflow-workshop/blob/main/exercises/01_building_blocks/operator_mix.nf)
 
@@ -642,12 +642,10 @@ b
 z
 ```
 
-- `map`: e.g. when you would like to run your own function on each item in a channel.
+- `map`: **transforms** a dataflow channel or value by applying a function to each item in the channel or value.
 
   - The map operator is expressed as a [closure](https://www.nextflow.io/docs/latest/script.html#script-closure) (`{ ... }`)
   - By default, the items in the channel are referenced by the variable `it`. This can be changed by using the `map { item -> ... }` syntax, which is considered a best practice in the field.
-  - All functions available on the item, are available on the `it` variable within the closure.
-  - When an element is a list or tuple, you can use the `it[0]`, `it[1]`, etc. syntax to access the individual elements of your item.
 
   Example: [`exercises/01_building_blocks/operator_map.nf`](https://github.com/vibbits/nextflow-workshop/blob/main/exercises/01_building_blocks/operator_map.nf)
 
@@ -672,12 +670,16 @@ Channel
 
 **Exercise 1.2**
 
-Create a channel from a csv-file (`input.csv`) and use an operator to view the contents. Generate the channel for the `input.csv`-file which you can find in the `exercises/01_building_blocks/` folder and contains the following content:
+Create a channel from a csv-file (`input.csv`) and use an operator to view the contents. Generate the channel for the `input.csv`-file which you can find in the `exercises/01_building_blocks/` folder and is a subset of the `boardgames.csv` file located in the `data/` folder. The file looks like this:
 
-| sampleId | Read 1                        | Read 2                        |
-|----------|-------------------------------|-------------------------------|
-| 01       | data/ggal_gut_1.fq.gz         | data/ggal_gut_2.fq.gz         |
-| 02       | data/ggal_liver_1.fq.gz       | data/ggal_liver_2.fq.gz       |
+<!-- data-type="none" -->
+| boardgame | release_year |
+|-----------|---------------|
+| Brass: Birmingham | 2018 |
+| Pandemic Legacy: Season 1 | 2015 |
+| Ark Nova | 2021 |
+| Gloomhaven | 2017 |
+| Twilight Imperium: Fourth Edition | 2017 |
 
 Test your Nextflow script with: `nextflow run <name>.nf`.
 
@@ -690,7 +692,7 @@ Test your Nextflow script with: `nextflow run <name>.nf`.
 
 The solution is available in the file `exercises/01_building_blocks/solutions/1.2_template-csv.nf`
 
-The file is imported with `.fromPath()`, followed by the `splitCsv()` operator where we set the header to `True`. The last step will output how the channels are constructed. Each row is transformed into a tuple with the first element as a variable `sampleId`, the second as `forward_read` and the third as `reverse_read`.
+The file is imported with `.fromPath()`, followed by the `splitCsv()` operator where we set the header to `True`. The last step will output how the channels are constructed. Each row is transformed into a tuple with the first element as a variable `boardgame` and the second element as `release_year`.
 
 ```groovy
 def samples_ch = Channel
@@ -705,7 +707,7 @@ def samples_ch = Channel
 
 **Exercise 1.3**
 
-Building on exercise 1.2 and using the `map` operator, create 2 channels, one containing the sampleId and the forward read as a tuple and the second containing the sampleId and reverse read as a tuple. Use the `view` operator to inspect the contents of thsee channels.
+Building on exercise 1.2 and using the `map` operator, create 2 channels, one containing the name of the boardgame and the second containing the release year. Use the `view` operator to inspect the contents of these channels.
 
 ********
 
