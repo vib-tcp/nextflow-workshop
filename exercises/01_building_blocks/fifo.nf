@@ -2,13 +2,15 @@
 
 // Define the process
 process whosfirst {
+    debug true // Makes sure the command output is printed in the terminal
 
     input:
     val x 
 
-    // Using the native execution instead of the more common 'script':
-    exec:
-    println "This is job number $x"
+    script:
+    """
+    echo "This is job number $x"
+    """
 }
 
 workflow {
