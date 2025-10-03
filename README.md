@@ -1098,10 +1098,10 @@ workflow {
 If we want to run a Nextflow script in its most basic form, we will use the following command:
 
 ```bash
-nextflow run <pipeline-name.nf>
+nextflow run <pipeline-name>
 ```
 
-with `<pipeline-name.nf>` the name of our pipeline, e.g. `exercises/02_run_first_script/firstscript.nf`. Inspect the script `firstscript.nf` again and notice how the channels and process are being created, how the workflow calls the process as a function with the channels as input arguments, how they are passed on as the processes' inputs, to the script section and then given to the output.
+with `<pipeline-name>` the name of our pipeline, e.g. `exercises/02_run_first_script/firstscript.nf`. Inspect the script `firstscript.nf` again and notice how the channels and process are being created, how the workflow calls the process as a function with the channels as input arguments, how they are passed on as the processes' inputs, to the script section and then given to the output.
 
 ```groovy
 #!/usr/bin/env nextflow
@@ -1211,7 +1211,14 @@ The results are stored in the results file as described in the two last lines. B
 
 There are two types of parameters!
 
-Pipeline parameters are the parameters used in the pipeline script (e.g. `params.reads`). They are related to the pipeline and can be modified/overwritten on the command-line with a **double dash**: e.g parameter `params.reads` in the `fastqc.nf` script can be set as `--reads` in the command-line.
+Pipeline parameters are the parameters used in the pipeline script (e.g. `params.input`). They are related to the pipeline and can be modified/overwritten on the command-line with a **double dash**: e.g parameter `params.input` in the [`count_lines.nf`](https://github.com/nextflow-io/nextflow/blob/main/exercises/02_executing_pipeline/count_lines.nf) script can be set as `--input` in the command-line.
+
+<div class="admonition admonition-info">
+<p class="admonition-title">Note</p>
+
+Try running the `count_lines.nf` script. What is the output here? What happens when you set the `--input` parameter to `data/crocodile_dataset.csv`?
+
+</div>
 
 There are more ways to set your pipeline parameters, for example in a `params.json` file. This can be useful when there are many parameters to a pipeline, or if you want to save the parameters for reuse later. More information about this can be found [here](https://www.nextflow.io/docs/latest/config.html).
 
@@ -1233,45 +1240,38 @@ Before thinking of writing our own (plausibly) complex pipeline, we can also thi
 - [Seqera pipelines](https://seqera.io/pipelines/) contains a list of officially endorsed pipelines by Seqera.
 - Pipelines from the [nf-core community](https://nf-co.re/pipelines).
 - Pipelines from [WorkflowHub](https://workflowhub.eu/) (this is a currently ongoing effort).
-- VSN-Pipelines for single cell analysis [VSN-Pipelines](https://github.com/vib-singlecell-nf/vsn-pipelines) (No longer updated)
-
 
 ### Import a pipeline
 
-Imagine that we set our eyes on the [`nextflow-io/rnaseq-nf`](https://github.com/nextflow-io/rnaseq-nf) pipeline. A toy workflow for the analysis of (once again) RNAseq data.
+Imagine that we set our eyes on the [`nf-core/demo`](https://github.com/nf-core/demo) pipeline. This is a toy pipeline that demonstrates the features of nf-core pipelines. It is not meant for real data analysis.
 
 There are different possibilities to pull a publicly available pipeline at a git-based hosting code system (GitHub, GitLab or BitBucket).
 One of them is to pull the pipeline using `nextflow pull`, like so:
 
 ```
-nextflow pull nextflow-io/rnaseq-nf
+nextflow pull nf-core/demo
 ```
 
-The latest version of the pipeline is written in DSL2. Imagine that you would like to run the last DSL1 version of the pipeline (v1.2), we can pull this specific version using:
+The `-revision` (or `-r` in short) option can be used to pull a specific version of the pipeline. For example the following command will pull version 1.0.2 of the nf-core/demo pipeline
 
 ```
-nextflow pull nextflow-io/rnaseq-nf -r v1.2
+nextflow pull nf-core/demo -revision 1.0.2
 ```
-
-<div class="admonition admonition-warning">
-<p class="admonition-title">Warning</p>
-DSL1 support was removed in Nextflow version 22.12.0 so you would need to use an older version of Nextflow for this to work.
-</div>
 
 Nextflow enables to pull any specific tag, release or commit. To pull the pipeline from (1) a given branch, at a (2) specific git commit and at a (3) specific version, we use the following:
 
 ```
-nextflow pull nextflow-io/rnaseq-nf -r master
-nextflow pull nextflow-io/rnaseq-nf -r 98ffd10a76
-nextflow pull nextflow-io/rnaseq-nf -r v1.2
+nextflow pull nf-core/demo -r master
+nextflow pull nf-core/demo -r db7f526
+nextflow pull nf-core/demo -r v1.2
 ```
 
-The workflows will not be cloned in the folder from where we launched these commands. Instead, it is available in the folder `~/.nextflow/assets/`, e.g. for the nextflow-io/rnaseq-nf pipeline in `~/.nextflow/assets/nextflow-io/rnaseq-nf/`. If we would want to have the workflows available (for further editing), we can use `nextflow clone`, similar to how `git` works.
+The workflows will not be cloned in the folder from where we launched these commands. Instead, it is available in the folder `~/.nextflow/assets/`, e.g. for the nf-core/demo pipeline in `~/.nextflow/assets/nf-core/demo/`. If we would want to have the workflows available (for further editing), we can use `nextflow clone`, similar to how `git` works.
 
 The `-r` option can also be used directly with `nextflow run` rather than running `nextflow pull` first.
 
 
----
+### Running a pipeline
 
 After importing our pipeline of interest, we can run it on the command-line using the nextflow run `<pipeline-name>` command, with `<pipeline-name>` being the name of the pipeline we just imported.
 
@@ -1280,10 +1280,10 @@ After importing our pipeline of interest, we can run it on the command-line usin
 
 When you use `nextflow run` without pulling the pipeline first (`nextflow pull`), Nextflow will check GitHub for a corresponding repository, if one exists it will pull it and run it locally.
 
-`nextflow run nextflow-io/rnaseq-nf` will result in an error due to uninstalled tools on our system. To fix this, simply add the parameter `-with-apptainer`. We will discover what is happening when we enable this setting later. On the Gent VSC system, apptainer containers can only be run from certain locations, therefore you'll need to also set the cache directory to be used, we can do this with a config (covered later) or using some runtime environment variables `APPTAINER_CACHEDIR` and `NXF_APPTAINER_CACHEDIR`, these should be set to `$VSC_SCRATCH`. Your final command should look something like this:
+`nextflow run nf-core/demo` will result in an error due to uninstalled tools on our system and due to missing parameters. To fix this, simply add the parameter `-profile test,apptainer` (or `-profile test,docker` when running on system with docker installed) and the parameter `--outdir results` to the command. We will discover what is happening when we enable the `-profile` setting later. On the Gent VSC system, apptainer containers can only be run from certain locations, therefore you'll need to also set the cache directory to be used, we can do this with a config (covered later) or using some runtime environment variables `APPTAINER_CACHEDIR` and `NXF_APPTAINER_CACHEDIR`, these should be set to `$VSC_SCRATCH`. Your final command should look something like this:
 
 ```bash
-APPTAINER_CACHEDIR=$VSC_SCRATCH/.apptainer_cache NXF_APPTAINER_CACHEDIR=$VSC_SCRATCH/.apptainer_cache nextflow run nextflow-io/rnaseq-nf -with-apptainer
+APPTAINER_CACHEDIR=$VSC_SCRATCH/.apptainer_cache NXF_APPTAINER_CACHEDIR=$VSC_SCRATCH/.apptainer_cache nextflow run nf-core/demo -profile test,apptainer --outdir results
 
 ```
 </div>
@@ -1297,7 +1297,7 @@ APPTAINER_CACHEDIR=$VSC_SCRATCH/.apptainer_cache NXF_APPTAINER_CACHEDIR=$VSC_SCR
 
 **Extra exercise 1**
 
-Run the publicly available pipeline `nextflow-io/rnaseq-nf`. Try to modify the name of the folder where results are stored by using a different parameter on the command-line.
+Run the publicly available pipeline `nf-core/demo`. Try to modify the name of the folder where results are stored by using a different parameter on the command-line.
 
 **************
 
@@ -1309,14 +1309,7 @@ Run the publicly available pipeline `nextflow-io/rnaseq-nf`. Try to modify the n
 The directory with the final results:
 
 ```bash
-APPTAINER_CACHEDIR=$VSC_SCRATCH/.apptainer_cache NXF_APPTAINER_CACHEDIR=$VSC_SCRATCH/.apptainer_cache nextflow run nextflow-io/rnaseq-nf --outdir 'myAwesomeResults' -with-apptainer
-
-```
-
-or, the directory with temporary files (used for caching):
-
-```bash
-APPTAINER_CACHEDIR=$VSC_SCRATCH/.apptainer_cache NXF_APPTAINER_CACHEDIR=$VSC_SCRATCH/.apptainer_cache nextflow run nextflow-io/rnaseq-nf -w 'myAwesomeResults' -with-apptainer
+APPTAINER_CACHEDIR=$VSC_SCRATCH/.apptainer_cache NXF_APPTAINER_CACHEDIR=$VSC_SCRATCH/.apptainer_cache nextflow run nf-core/demo -profile test,apptainer --outdir myAwesomeResults
 
 ```
 
@@ -1327,7 +1320,7 @@ APPTAINER_CACHEDIR=$VSC_SCRATCH/.apptainer_cache NXF_APPTAINER_CACHEDIR=$VSC_SCR
 
 **Extra exercise 2**
 
-Which pipeline parameters are defined, can you modify these in the rnaseq-nf pipeline?
+Which pipeline parameters are defined, can you modify these in the [nf-core/demo](https://nf-co.re/demo) pipeline? What happens when you specify `--skip_trim`?
 
 ***************
 
@@ -1336,7 +1329,16 @@ Which pipeline parameters are defined, can you modify these in the rnaseq-nf pip
 
 **Solution 2**
 
-The `reads`, `transcriptome`, `outdir` and `multiqc` parameters.
+The `input`, `outdir`, `email` and `multiqc_title`,  `--genome`, `--fasta`, `--skip_trim`, `--multiqc_methods_description` parameters.
+
+<div class="admonition admonition-info">
+<p class="admonition-title">Note</p>
+
+More parameters are defined in the `nextflow.config` file of the pipeline. These are hidden on the website as these are not important for the user to run the pipeline.
+
+</div>
+
+`--skip_trim` will skip the trimming step with seqtk.
 
 ***********
 
@@ -1354,10 +1356,9 @@ The `reads`, `transcriptome`, `outdir` and `multiqc` parameters.
 - What is the default fragment size used by the pipeline?
 - What happens if you do not specify a profile (`-profile`)?
 
-3. In the [nextflow-io *awesome* pipelines](https://github.com/nextflow-io/awesome-nextflow), look for the featured `BABS-aDNASeq` workflow:
-- What tool is used for calling variants?
-- What version of Nextflow is it advised to use?
-- How do you download the `BABS-aDNASeq` pipeline locally?
+3. In the [`Seqera pipelines repository`](https://seqera.io/pipelines/), look for the featured `epi2me-labs/wf-alignment` workflow:
+- What are the minimum requirements to run the pipeline?
+- How do you download the pipeline locally?
 
 ***********
 
@@ -1366,23 +1367,20 @@ The `reads`, `transcriptome`, `outdir` and `multiqc` parameters.
 
 **Solution 3**
 
-1. As of 22/04/2025: 128 pipelines are available, of which 79 are released, 37 are under development, and 12 are archived.
+1. As of 03/10/2025: 139 pipelines are available, of which 84 are released, 43 are under development, and 12 are archived.
 
 2. [link](https://nf-co.re/atacseq)
  - `2.1.2` (15/10/2024)
  - 9 versions: current (2.1.2), 2.1.1, 2.1.0, 2.0, 1.2.2, 1.2.1, 1.2.0, 1.1.0, and 1.0.0.
  - Only one required parameter: `--input` (Path to comma-separated file containing information about the samples in the experiment)
  - 200 (parameter `--fragment_size`)
- - If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the PATH. More information is available [here](https://nf-co.re/atacseq/1.2.2/usage#main-arguments).
+ - If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the PATH. More information is available [here](https://nf-co.re/atacseq/2.1.2/docs/usage/#-profile).
 
-3. [link](https://github.com/crickbabs/BABS-aDNASeq).
- - `samtools mpileup`
- - version 0.32.0 (Note that the current version is 24.04.4 (15/10/2024))
- - `git clone https://github.com/crickbabs/BABS-aDNASeq`  (or `nextflow clone` or `nextflow pull`)
+3. [link](https://github.com/epi2me-labs/wf-alignment).
+ - At least 6 CPUs and 12 GB of memory
+ - `nextflow pull epi2me-labs/wf-alignment`
 
 ***********
-
-
 
 
 ## Creating our first pipeline
