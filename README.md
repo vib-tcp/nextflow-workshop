@@ -1384,8 +1384,12 @@ More parameters are defined in the `nextflow.config` file of the pipeline. These
 
 
 ## Creating our first pipeline
-In this chapter we will build a basic RNA-seq pipeline consisting of quality controls, trimming of reads and mapping to a reference genome (excl. counting). We will build the pipeline step by step, starting from quality control with FastQC. The figure below was generated with Nextflow and represents the processes that we will build and the overview of the dataflow from the beginning to the end of the workflow.
 
+In this chapter we will build a simple toy pipeline based on the `crocodiles_dataset.csv` file located in the `data/` folder. The pipeline will consist of the following steps:
+
+1. Convert the file from the CSV (Comma-separated values) to the TSV (Tab-separated values) format
+2. Split the file into multiple files, each containing only the records of a single country
+3. Create a summary file that summarizes the data for each country
 
 ![](docs/img/nextflow/RNAseq.PNG)
 
