@@ -1390,41 +1390,40 @@ In this chapter we will build a simple toy pipeline based on the `crocodiles_dat
 1. Convert the file from the CSV (Comma-separated values) to the TSV (Tab-separated values) format
 2. Split the file into multiple files, each containing only the records of a single country
 3. Create a summary file that summarizes the data for each country
+4. Generate two plots visualizing the mean length and mean width
 
-![](docs/img/nextflow/RNAseq.PNG)
+![](docs/img/nextflow/first-pipeline.png)
 
 
-### Quality control with `FastQC`
+### Converting the CSV to TSV
 
-The following script can be found and run in `exercises/03_first_pipeline/fastqc.nf`.
+The following script can be found and run in `exercises/03_first_pipeline/pipeline.nf`.
 
 ```groovy
 #!/usr/bin/env nextflow
 
-params.reads = "${launchDir}/data/*.fq.gz"
+params.input = "$launchDir/data/crocodile_dataset.csv"
 
-/**
- * Quality control fastq
- */
-
-
-
-process fastqc {
+process CSV_TO_TSV {
+    container 'ubuntu:latest'
 
     input:
-    path read
+    path csv_file
+
+    output:
+    path "*.tsv", emit: tsv
 
     script:
     """
-    fastqc ${read}
+    tr ',' '\\t' < ${csv_file} > ${csv_file.baseName}.tsv
     """
 }
 
 workflow {
-    def reads_ch = Channel
-        .fromPath( params.reads )
+    def input_ch = Channel.fromPath(params.input)
 
-    fastqc(reads_ch)
+    // Convert CSV to TSV
+    CSV_TO_TSV(input_ch)
 }
 ```
 
@@ -1438,16 +1437,16 @@ The first line of our script is always a shebang line, declaring the environment
 
 </div>
 
-Let's first run this script with the following command. If you have `htop` installed, keep an eye on the distribution of the workload and notice how Nextflow parallelises the jobs.
+Let's first run this script with the following command.
 
 ```
-nextflow run exercises/03_first_pipeline/fastqc.nf
+nextflow run exercises/03_first_pipeline/pipeline.nf
 ```
 
 <div class="admonition admonition-info">
 <p class="admonition-title">Note</p>
 
-The process in `exercises/03_first_pipeline/fastqc.nf` specifies a container, and the `nextflow.config` file in the same folder activates the use of docker.  If this directive was not there or apptainer was not enabled, you would need to make sure that the tool `fastQC` is installed. Conda is already installed and activated, it allows us to easily install `fastqc` with the following command `conda install -c bioconda fastqc`.
+The process in `exercises/03_first_pipeline/pipeline.nf` specifies a container, and the `nextflow.config` file in the same folder activates the use of Apptainer.  If this directive was not there or apptainer was not enabled, you would need to make sure that the tool `tr` is installed.
 
 </div>
 
@@ -1461,8 +1460,9 @@ In the following exercises, we will add new features to this script.
 
 **Exercise 2.1**
 
-- Overwrite the parameter `reads` on runtime (when running Nextflow on the command-line) so that it only takes `ggal_gut_1.fq.gz` as an input read.
-- Additionally, FastQC generates a html- and zip-file for each read. Where are these output files located?
+Something is not right in the way the CSV file gets passed as input to the `CSV_TO_TSV` process. Can you spot the problem? Fix it so that the process can run correctly.
+
+Hint: Is the input handled as a file or value?
 
 ****************
 
@@ -1471,11 +1471,31 @@ In the following exercises, we will add new features to this script.
 
 **Solution 2.1**
 
-```
-nextflow run exercises/03_first_pipeline/fastqc.nf --reads data/ggal_gut_1.fq.gz
-```
+The input should be handled as a file, therefore the channel should be created with `Channel.fromPath` and the input declaration block of the process should use the `path` qualifier.
 
-- The output files are stored in the `work/` directory following the generated hashes. The hash at the beginning of each process reveals where you can find the result of each process.
+```groovy
+process CSV_TO_TSV {
+    container 'ubuntu:latest'
+
+    input:
+    path csv_file
+
+    output:
+    path "output.tsv", emit: tsv
+
+    script:
+    """
+    tr ',' '\\t' < ${csv_file} > output.tsv
+    """
+}
+
+workflow {
+    def input_ch = Channel.fromPath(params.input)
+
+    // Convert CSV to TSV
+    CSV_TO_TSV(input_ch)
+}
+```
 
 ****************
 
@@ -1484,11 +1504,8 @@ nextflow run exercises/03_first_pipeline/fastqc.nf --reads data/ggal_gut_1.fq.gz
 
 **Exercise 2.2**
 
-Change the the script in order to accept & work with paired-end reads. For this we will need to:
-
-- Adapt something in the reads parameter (`params.reads`)
-- Change how the channel is generated
-- Change the `input` declaration in the process (from `path` to a `tuple`).
+- Overwrite the parameter `input` on runtime (when running Nextflow on the command-line) so that the pipeline used the file located in `exercises/03_first_pipeline/crocodiles_subset.csv` instead of the default one.
+- Where is the TSV file created by the `CSV_TO_TSV` process stored?
 
 ****************
 
@@ -1497,7 +1514,11 @@ Change the the script in order to accept & work with paired-end reads. For this 
 
 **Solution 2.2**
 
-The solution is given in `exercises/03_first_pipeline/solutions/2.2_fastqc.nf`. Note that if you run this script, only two processes will be launched, one for each paired-end reads dataset.
+```
+nextflow run exercises/03_first_pipeline/pipeline.nf --input exercises/03_first_pipeline/crocodiles_subset.csv
+```
+
+- The output file is stored in the `work/` directory following the generated hashes. The hash at the beginning of each process reveals where you can find the result of each process.
 
 ****************
 
@@ -1511,7 +1532,7 @@ The solution is given in `exercises/03_first_pipeline/solutions/2.2_fastqc.nf`. 
 Run the script with:
 
 ```
-nextflow run exercises/03_first_pipeline/fastqc.nf -bg > log
+nextflow run exercises/03_first_pipeline/pipeline.nf -bg > log
 ```
 
 What does the `-bg > log` mean? What would the advantage be?
@@ -1532,10 +1553,10 @@ Run in the background and push output of nextflow to the log file. No need of ex
 
 **Exercise 2.4**
 
-Check if the files exist ([`checkIfExists`](https://www.nextflow.io/docs/latest/reference/channel.html#frompath)) upon creating the channels and invoke an error by running the nextflow script with wrong reads, e.g.
+Check if the files exist ([`checkIfExists`](https://www.nextflow.io/docs/latest/reference/channel.html#frompath)) upon creating the channels and invoke an error by running the nextflow script with a non-existing file.
 
 ```
-nextflow run exercises/03_first_pipeline/fastqc.nf --reads wrongfilename
+nextflow run exercises/03_first_pipeline/pipeline.nf --input non_existing_file.csv
 ```
 ****************
 
@@ -1544,7 +1565,14 @@ nextflow run exercises/03_first_pipeline/fastqc.nf --reads wrongfilename
 
 **Solution 2.4**
 
-The solution is given in `exercises/03_first_pipeline/solutions/2.4_fastqc.nf`
+```groovy
+workflow {
+    def input_ch = Channel.fromPath(params.input, checkIfExists: true)
+
+    // Convert CSV to TSV
+    CSV_TO_TSV(input_ch)
+}
+```
 ****************
 
 
@@ -1556,13 +1584,35 @@ The solution is given in `exercises/03_first_pipeline/solutions/2.4_fastqc.nf`
 
 Control where and how the output is stored. Have a look at the directive [`publishDir`](https://www.nextflow.io/docs/latest/reference/process.html#publishdir). Nextflow will only store the files that are defined in the `output` declaration block of the process, therefore we now also need to define the output. Put a copy of the output files in a new folder that contains only these results.
 
+Additionaly, have a look at how to dynamically name the output files based on the filename of the input file. Have a look at the Nextflow documentation on [files](https://www.nextflow.io/docs/latest/working-with-files.html#getting-file-attributes) to get some inspiration.
+
+Extra: Can you figure out a way to let the user decide where to store the results?
+
 ****************
 
     {{9-10}}
 ****************
 **Solution 2.5**
 
-The solution is given in `exercises/03_first_pipeline/solutions/2.5_fastqc.nf`
+```groovy
+params.outdir = "$launchDir/results"
+
+process CSV_TO_TSV {
+    container 'ubuntu:latest'
+    publishDir '${params.outdir}/csv_to_tsv', mode: 'copy'
+
+    input:
+    path csv_file
+
+    output:
+    path "*.tsv", emit: tsv
+
+    script:
+    """
+    tr ',' '\\t' < ${csv_file} > ${csv_file.baseName}.tsv
+    """
+}
+```
 
 - Without any additional arguments, a hyperlink will be created to the files stored in the `work/` directory. With mode set to copy (`mode: 'copy'`), a copy of the files will be made available in the defined directory instead.
 - If the output is to be used by another process, and the files are being moved, they won't be accessible for the next process and hence you're pipeline will fail complaining about files not being present. For this reason, we recommend avoiding the use of `mode: 'move'` in most cases.
@@ -1573,36 +1623,21 @@ Files are copied into the specified directory in an asynchronous manner, thus th
 </div>
 
 
-
-The final FastQC script, with some additional comments is provided in `exercises/03_first_pipeline/solutions/fastqc_final.nf`.
-
 ****************
 
 
-### Quality filtering with `trimmomatic`
+### Splitting by country
 
-Now we will add the next step in our pipeline, which is **trimming and filtering the low quality reads**. For this process, we will use the tool `trimmomatic`.
+Now we will add the next step in our pipeline, which is **splitting the data by country**.
 
-The `fastqc.nf` script was extended with the trimmomatic process and is available in `exercises/03_first_pipeline/trimmomatic.nf`.
-
-- A number of parameters have been added related to the trimmomatic process
-- The process `trimmomatic` with its inputs and outputs and the script has been created
-- The `workflow` now also contains the process trimmomatic, called as a function
-
-In the `output` declaration block, we are introducing a new option: `emit`. Defining a process output with `emit` allows us to use it as a named channel in the external scope.
-
----
-
-At this point we're interested in the result of the `trimmomatic` process. Hence, we want to verify the quality of the reads with another `fastqc` process. Re-run `fastqc` on the filtered read sequences by adding it in the workflow of `trimmomatic.nf`. Use the parameter `-resume` to restart the pipeline from where it stopped the last time.
-
-Hmm, error? `Process fastqc has been already used -- If you need to reuse the same component include it with a different name or include in a different workflow context`. It means that processes can only be used once in a workflow. This means that we need to come up with a smarter solution (see below).
+The process located in `exercises/03_first_pipeline/modules/split_by_country.nf` contains the process to handle this step. However, it is quite cumbersome to copy over the process to each file where it needs to be used. Therefore, we will learn how to import modular processes (a.k.a. modules) in the next section.
 
 ### Modules
 Until now, we have written the processes and the workflow in the same file. However, if we want to be truly modular, we can write a library of modules and import a specific component from that library. A module can contain the definition of a function, process and workflow definitions.
 
 The figure below gives an overview of how the structure could look like. On the left we have the main Nextflow script (`main.nf`) that defines the parameters, channels and the workflow. It imports the processes from the modules, in this case available in a folder `modules/`. The configuration file `nextflow.config` will be further discussed in the next chapter.
 
-
+<!-- TODO update the following image to remove the bioinformatics tool mentions -->
 ![](docs/img/nextflow/overview-folder-structure.png)
 
 A module is generally imported with
@@ -1611,16 +1646,16 @@ A module is generally imported with
 include {<process-name>} from '../path/to/modules/script.nf'
 ```
 
-with `<process-name>` the name of the process defined in the `script.nf`. The `from` section is used to specify the location of the module relative to the folder the current file is in. The path must start with either `./` or `../`. Navigate to the modules folder and find a script called `fastqc.nf`. This script consists of a process and a workflow. This module can be imported into our pipeline script (main workflow) like this:
+with `<process-name>` the name of the process defined in the `script.nf` file. The `from` section is used to specify the location of the module relative to the folder the file where the include happens is located in. The path must start with either `./` or `../`. Navigate to the modules folder and find a script called `csv_to_tsv.nf`. This script consists of a single module. This module can be imported into our pipeline script (main workflow) like this:
 
 ```groovy
-include {fastqc} from './modules/fastqc.nf'
+include { CSV_TO_TSV } from './modules/csv_to_tsv.nf'
 ```
 
-This doesn't overcome the problem that we can only use a process once. However, when including a module component it’s possible to specify a name alias. This allows the inclusion and the invocation of the same component multiple times in your script using different names. For example:
+Using the same process twice in the same workflow is not allowed by Nextflow due to naming conflicts. However, there is a way to work around this issue using the modules include statement. Using the `as` keyword, we can rename the process upon import and thus use it multiple times inside of the same workflow. Example:
 
 ```groovy
-include { fastqc as fastqc_raw; fastqc as fastqc_trim } from "./modules/fastqc"
+include { CSV_TO_TSV as CSV_TO_TSV_MAIN; CSV_TO_TSV as CSV_TO_TSV_SUBSETS } from "./modules/csv_to_tsv.nf"
 
 ```
 

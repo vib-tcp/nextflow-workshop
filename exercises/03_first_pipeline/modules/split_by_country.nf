@@ -1,5 +1,6 @@
 process SPLIT_BY_COUNTRY {
     container 'python:latest'
+    publishDir "${params.outdir}/country_subsets", mode: 'copy'
 
     input:
     path tsv_file

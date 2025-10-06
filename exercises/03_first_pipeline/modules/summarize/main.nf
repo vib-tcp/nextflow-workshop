@@ -1,5 +1,6 @@
 process SUMMARIZE {
     container 'python:latest'
+    publishDir "${params.outdir}/summaries", mode: 'copy'
 
     input:
     tuple val(country), path(file)

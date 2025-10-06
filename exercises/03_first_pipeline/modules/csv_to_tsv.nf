@@ -1,5 +1,6 @@
 process CSV_TO_TSV {
     container 'ubuntu:latest'
+    publishDir "${params.outdir}/tsv", mode: 'copy'
 
     input:
     path csv_file
