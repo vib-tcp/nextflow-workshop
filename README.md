@@ -1900,6 +1900,7 @@ Pipeline configuration properties are defined in a file named `nextflow.config` 
 
 Let's have a look again at the structure of the workflow. The `nextflow.config` defines the technical and pipeline parameters and are used to configure the `main.nf` script. Actually, we can write any number of `*.config` files and include them in the general `nextflow.config` which is then used as default configuration for the `main.nf`.
 
+<!-- TODO remove mentions from bioinformatics tools from this graph -->
 ![](docs/img/nextflow/overview-folder-structure.png)
 
 ### Technical parameters
@@ -1911,26 +1912,26 @@ If not otherwise specified, processes are executed on the local computer using t
 
 ```
 process {
-    memory='1G'
+    memory='1.GB'
     cpus='1'
 }
 ```
-It's also possible to create labels that can be chosen and used for each process separately. In the example below we can use the label `high` as a directive in a process and hence allow more resources for that particular process (see `star.nf`). These labels are added in the directives of the processes as we did in our modules.
+It's also possible to create labels that can be chosen and used for each process separately. In the example below we can use the label `high` as a directive in a process and hence allow more resources for that particular process. These labels can be added as a directive to each process.
 
 ```
 process {
     withLabel: 'low' {
-        memory='1G'
-        cpus='1'
-        time='6h'
+        memory=1.GB
+        cpus=1
+        time=6.h
     }
     withLabel: 'med' {
-        memory='2G'
-        cpus='2'
+        memory=2.GB
+        cpus=2
     }
     withLabel: 'high' {
-        memory = '8G'
-        cpus='8'
+        memory = 8.GB
+        cpus=8
     }
 }
 ```
@@ -1945,27 +1946,28 @@ Here is an overview of supported executors:
 
 ![](docs/img/nextflow/executors-schedulers.png)
 
+More executors are available as Nextflow plugins.
+
 
 #### Portability
 
 As discussed before, Nextflow is especially useful thanks to its portability and reproducibility, i.e. the native support for containers and environment managers. There are two options for attaching containers to your pipeline. Either you define a dedicated container image for each process individually, or you define one container for all processes together in the configuration file.
 
-In the former case, simply define the container image name in the process directives. In the snippet below, we defined a container that already exists in [DockerHub](https://hub.docker.com/r/biocontainers/fastqc). Dockerhub is also the default location where Nextflow will search for the existence of this container if it doesn't exist locally.
+In the former case, simply define the container image name in the process directives. In the snippet below, we defined a container that already exists in [Dockerhub](https://hub.docker.com/_/ubuntu). Dockerhub is also the default location where Nextflow will search for the existence of this container if it doesn't exist locally.
 
 ```groovy
-process quality_control {
-    container 'biocontainers/fastqc:v0.11.9_cv7'
+process CSV_TO_TSV {
+    container 'ubuntu:latest'
 
-    """
-    fastqc ...
-    """
+    ...
+
 }
 ```
 
 In the latter case, write the following line in the `nextflow.config` file:
 
 ```groovy
-process.container = 'vibbioinfocore/analysispipeline:latest'
+process.container = 'ubuntu:latest'
 ```
 
 We're referring to a Docker container image that exists on [Dockerhub](http://dockerhub.com/). Notice however that all the tools and dependencies necessary during your pipeline, need to be present in this image. To run a pipeline script with this Docker container image, you would use the following command: `nextflow run example.nf -with-docker`.
@@ -1982,17 +1984,17 @@ Another interesting parameter to consider adding to the configuration file is th
 
 **Singularity/Apptainer**:
 
-Similar to docker, using a singularity or apptainer image does not require you to have to adapt the pipeline script. You can run with Singularity container using the following command-line parameter: `-with-singularity [singularity-image-file]` (Apptainer support is also present), where the image is downloaded from Dockerhub as well, built on runtime and then stored in a folder `singularity/`. Re-using a singularity image is possible with:
+Similar to docker, using a singularity or apptainer image does not require you to have to adapt the pipeline script. You can run with Singularity container using the following command-line parameter: `-with-singularity [apptainer-image-file]` (Apptainer support is also present), where the image is downloaded from Dockerhub as well, built on runtime and then stored in a folder `apptainer/`. Re-using a Apptainer image is possible with:
 
 ```groovy
-singularity.cacheDir = "/path/to/singularity"
+apptainer.cacheDir = "/path/to/apptainer"
 ```
 
-If you want to avoid entering the Singularity image as a command line parameter, you can define it in the Nextflow configuration file. For example you can add the following lines in the `nextflow.config` file:
+If you want to avoid entering the Apptainer image as a command line parameter, you can define it in the Nextflow configuration file. For example you can add the following lines in the `nextflow.config` file:
 
 ```groovy
-process.container = '/path/to/singularity.img'
-singularity.enabled = true
+process.container = '/path/to/apptainer.img'
+apptainer.enabled = true
 ```
 
 #### Profiles
@@ -2006,17 +2008,17 @@ profiles {
         process {
             executor = 'local'
             withLabel: 'low' {
-                memory='1G'
-                cpus='1'
-                time='6h'
+                memory=1.GB
+                cpus=1
+                time=6.h
             }
             withLabel: 'med' {
-                memory='2G'
-                cpus='2'
+                memory=2.GB
+                cpus=2
             }
             withLabel: 'high' {
-                memory = '8G'
-                cpus='8'
+                memory=8.GB
+                cpus=8
             }
         }
     }
@@ -2075,15 +2077,8 @@ The parameters can be defined with `params.<name> = <value>` or join them all in
 params {
     // General parameters
     projdir = "/path/to/data"
-    refdir = "/path/to/references"
-    outdir = "/path/to/data-analysis"
-
-    // Reference genome and annotation files
-    genome = "${refdir}/Drosophila_melanogaster.BDGP6.dna.fa"
-    gtf = "${refdir}/Drosophila_melanogaster.BDGP6.85.sample.gtf"
-
-    // Input parameters
-    reads = "${projdir}/*{1,2}.fq.gz"
+    input = "/path/to/input/file"
+    outdir = "/path/to/output"
 
     ...
 }
@@ -2100,7 +2095,7 @@ nextflow run main.nf -params-file params.json
 ```json
 {
   "projdir": "/path/to/data",
-  "reads": "~/data/*{1,2}.fq.gz"
+  "input": "~/data/crocodile_dataset.csv"
 }
 ```
 
@@ -2108,7 +2103,7 @@ nextflow run main.nf -params-file params.json
 
 ```yaml
 projdir: /path/to/data
-reads: ~/data/*{1,2}.fq.gz
+input: ~/data/crocodile_dataset.csv
 ```
 
 ### Include other configs
@@ -2137,7 +2132,7 @@ The order in which the configs are included matters. Configuration files include
 
 **Extra exercise 1**
 
-Complete the `nextflow.config`, `standard.config` and `params.yaml` files in the `exercises/04_configs/` folder. These config files should accompany the script `exercises/04_configs/RNAseq.nf`. Move into this directory (`cd exercises/04_configs`) and run the commmand to run this pipeline: `nextflow run RNAseq.nf -profile standard,apptainer -params-file params.yaml`.
+Complete the `nextflow.config`, `standard.config` and `params.yaml` files in the `exercises/04_configs/` folder. These config files should accompany the script `exercises/04_configs/main.nf`. Move into this directory (`cd exercises/04_configs`) and run the commmand to run this pipeline: `nextflow run main.nf -profile standard,apptainer -params-file params.yaml`.
 
 ****************
 
@@ -2156,7 +2151,7 @@ The solution is available in the `exercises/04_configs/solutions/` folder.
 **Extra exercise 2**
 
 
-Run the `nextflow-io/rnaseq-nf` locally with Apptainer.
+Run the `nf-core/demo` pipeline locally with Apptainer.
 
 ****************
 
@@ -2164,8 +2159,10 @@ Run the `nextflow-io/rnaseq-nf` locally with Apptainer.
 ****************
 **Solution 2**
 
+Run the following command in `exercises/04_configs/` directory:
+
 ```bash
-nextflow run nextflow-io/rnaseq-nf -r 1ca363c8 -profile standard,apptainer
+nextflow run nf-core/demo -r 1.0.2 -profile standard,apptainer
 ```
 
 The local executor will be chosen and it is hence not necessary to select the standard profile.
@@ -2192,7 +2189,7 @@ In the previous extra exercise we ran a Nextflow pipeline residing on GitHub. Im
 ****************
 **Solution 3**
 
-To change anything in the configuration file, the `nextflow.config` file needs to be edited. There are two options for this: in the `assets` where the pipeline is stored or by cloning the pipeline in our local folder structure. For this, you can use the following command: `nextflow clone <pipeline-name>` to clone (download) the pipeline locally. Then, open an editor and change the `nextflow.config` file so it contains the following:
+To change anything in the configuration file, the `nextflow.config` file needs to be edited. There are two options for this: in the `~/.nextflow/assets/` directory where the pipeline is stored or by cloning the pipeline in our local folder structure. For this, you can use the following command: `nextflow clone <pipeline-name>` to clone (download) the pipeline locally. Then, open an editor and change the `nextflow.config` file so it contains the following:
 
 <div class="admonition admonition-warning">
 <p class="admonition-title">Warning</p>
