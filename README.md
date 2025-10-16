@@ -2209,7 +2209,7 @@ profiles {
 
 ## Creating reports
 
-Nextflow has an embedded function for reporting various information about the resources needed by each job and the timing. Just by adding a parameter on runtime, different kinds of reports can be created.
+Nextflow has an embedded function to report metrics about the resources used by each job and the timing. Just by adding a parameter on runtime, different kinds of reports can be created.
 
 
 > **Workflow report**
@@ -2217,22 +2217,22 @@ Nextflow has an embedded function for reporting various information about the re
 > After running the nextflow pipeline script with the option `-with-report`, find the html report in the folder from where you launched the pipeline.
 > 
 > ```bash
-> nextflow run exercises/05_reports/RNAseq.nf -with-report -profile docker
+> nextflow run exercises/05_reports/main.nf -with-report -profile apptainer
 > ```
 > 
 > This report describes the usage of resources and job durations and gives an indication of bottlenecks and possible optimizations in the pipeline.
 
 > **DAG**
 > 
-> Use the option `-with-dag` to create a visualization of the workflow. By default and without any arguments, it will create a `.dot`-file that contains a description of the workflow, however to get a visualization we need to use an extra argument (e.g. `rnaseq.html`). This visualization is a nice overview of the workflow processes and how they are chained together and can be especially useful as a starting point to unravel more complex pipelines.
+> Use the option `-with-dag` to create a visualization of the workflow. By default and without any arguments, it will create a `.html`-file that contains a description of the workflow. This visualization is a nice overview of the workflow processes and how they are chained together and can be especially useful as a starting point to unravel more complex pipelines.
 > 
 > ```bash
-> nextflow run exercises/05_reports/RNAseq.nf -with-dag rnaseq.html -profile docker
+> nextflow run exercises/05_reports/main.nf -with-dag -profile apptainer
 > ```
 > 
 > <div class="admonition admonition-info">
-> <p class="admonition-title">Parameters</p>
-> As of Nextflow 22.04, the DAG can also be output in mermaid format, more information can be found [here](https://www.nextflow.io/docs/latest/tracing.html#dag-visualisation).
+<p class="admonition-title">Parameters</p>
+As of Nextflow 22.04, the DAG can also be output in mermaid format, more information can be found [here](https://www.nextflow.io/docs/latest/reports.html#workflow-diagram).
 > </div>
 
 
@@ -2241,7 +2241,7 @@ Nextflow has an embedded function for reporting various information about the re
 > After running the nextflow pipeline script with the option `-with-timeline`, find the html report in the folder from where you launched the pipeline.
 > 
 > ```bash
-> nextflow run exercises/05_reports/RNAseq.nf -with-timeline -profile docker
+> nextflow run exercises/05_reports/main.nf -with-timeline -profile apptainer
 > ```
 > 
 > This report summarizes the execution time of each process in your pipeline. It can be used to identify bottlenecks and to optimize the pipeline. More information about the format of the timeline report can be found [here](https://www.nextflow.io/docs/latest/tracing.html#timeline-report).
@@ -2251,18 +2251,17 @@ Nextflow has an embedded function for reporting various information about the re
 > Adding the parameter `-with-tower` enables the Seqera Platform (used to be Tower) service and will output the reports to a browser-based platform. More about Seqera Platform below.
 
 ### Seqera Platform
-The Seqera Platform service, supported and developed by Seqera Labs, allows to monitor the workloads from a browser. Pipelines can be deployed on any local, cluster or cloud environment using the intuitive *launchpad* interface. Futhermore, it is also possible to manage teams and organizations, control project costs, and more. With ongoing improvements to Seqera Platform, it is a very powerful platform worth checking out.
+The Seqera Platform service, supported and developed by Seqera Labs, allows to monitor the workloads from a browser. Pipelines can be deployed on any local, cluster or cloud environment using the intuitive *launchpad* interface. Furthermore, it is also possible to manage teams and organizations, control project costs, and more. With ongoing improvements to Seqera Platform, it is a very powerful platform worth checking out.
 
 To start using Seqera Platform, first create an account on [cloud.seqera.io](https://cloud.seqera.io). Then, we need to set the access token in our environment:
 
 ```bash
 export TOWER_ACCESS_TOKEN=<YOUR ACCESS TOKEN>
-export NXF_VER=24.10.5
 ```
 
-Verify the Nextflow version (NXF_VER) with `nextflow -v`. The access token can be obtained from clicking on the top-right profile icon, select *Your tokens* and create *New token*.
+The access token can be obtained from clicking on the top-right profile icon, select *Your tokens* and create *New token*.
 
-Tower is undergoing a lot of changes, hence we refer to this [training material](https://training.nextflow.io/basic_training/seqera_platform/) for up to date information. More information is also available at [seqera.io](https://seqera.io/).
+Tower is undergoing a lot of changes, hence we refer to the [website](https://seqera.io/platform/) for up to date information.
 
 ---
 
@@ -2273,7 +2272,7 @@ Tower is undergoing a lot of changes, hence we refer to this [training material]
 
 **Exercise 1**
 
-Run the `RNAseq.nf` pipeline again, this time also make the reports (both html-report and a visualization of the pipeline)
+Run the `main.nf` pipeline again, this time also make the reports (both html-report and a visualization of the pipeline)
 
 ****************
 
@@ -2284,7 +2283,7 @@ Run the `RNAseq.nf` pipeline again, this time also make the reports (both html-r
 The command that we need for this is the following.
 
 ```bash
-nextflow run exercises/05_reports/RNAseq.nf -profile apptainer -with-report -with-dag rnaseq.html
+nextflow run exercises/05_reports/main.nf -profile apptainer -with-report -with-dag
 ```
 To view the report and the dag, you will need to download the files to your local machine.
 
