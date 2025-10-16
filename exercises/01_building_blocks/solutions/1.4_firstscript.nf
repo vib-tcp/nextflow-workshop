@@ -10,7 +10,7 @@
 
 // Defining the process that is executed
 process valuesToFile {
-    tag  "$nums,$strs" 	
+    tag "$nums,$strs" 	
 
     input: 
     val nums

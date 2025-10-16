@@ -2,22 +2,24 @@
 
 params.input_csv = 'exercises/01_building_blocks/input.csv'
 
-process split_csv {
+process release_info {
+    debug true
+
     input:
-    tuple val(sampleId), path(read1), path(read2)  
+    tuple val(boardgame), val(release_year)  
 
     script:
     """
-    echo your_command --sample $sampleId --reads $read1 $read2 
+    echo $boardgame released in $release_year
     """
 }
 
 workflow {
-    def samples_ch = Channel
+    def games_ch = Channel
                     .fromPath(params.input_csv)
                     .splitCsv(header:true)
-                    .map{ row-> tuple(row.sampleId, file(row.forward_read), file(row.reverse_read)) }
+                    .map{ row-> tuple(row.boardgame, row.release_year) }
 
-    samples_ch.view()
-    split_csv(samples_ch)
+    games_ch.view()
+    release_info(games_ch)
 }
