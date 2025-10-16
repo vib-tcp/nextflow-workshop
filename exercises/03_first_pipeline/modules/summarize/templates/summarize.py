@@ -22,6 +22,7 @@ def main():
             names[name] += 1
 
     with open("${country}_summary.txt", "w") as outfile:
+        outfile.write("Original file: ${input_tsv}\\n")
         outfile.write(f"Country: ${country}\\n")
         outfile.write(f"Mean length: {sum(lengths)/len(lengths)}\\n")
         outfile.write(f"Mean weight: {sum(weights)/len(weights)}\\n")

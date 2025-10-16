@@ -4,7 +4,6 @@ params.outdir = "$launchDir/results"
 include { CSV_TO_TSV        } from "../modules/csv_to_tsv.nf"
 include { SPLIT_BY_COUNTRY  } from "../modules/split_by_country.nf"
 include { SUMMARIZE         } from "../modules/summarize/"
-include { PLOT              } from "../modules/plot.nf"
 
 workflow {
     def input_ch = Channel.fromPath(params.input, checkIfExists:true)
@@ -26,14 +25,5 @@ workflow {
     // Create summary for each country
     SUMMARIZE(split_ch, input_ch.first())
 
-    def summary_ch = SUMMARIZE.out.summary
-        .map { _country, summary ->
-            summary
-        }
-        .collect()
-
-    // Plot the summaries
-    PLOT(summary_ch)
-    PLOT.out.lengths.view()
-    PLOT.out.weights.view()
+    SUMMARIZE.out.summary.view()
 }

@@ -1,37 +1,15 @@
-#!/usr/bin/env nextflow
+params.input = "$launchDir/data/crocodile_dataset.csv"
+params.outdir = "$launchDir/results"
 
-// The input data is defined in the beginning.
-params.reads = "${launchDir}/data/*{1,2}.fq.gz"
-params.outdir = "${launchDir}/results"
-params.threads = 2
-params.slidingwindow = "SLIDINGWINDOW:4:15"
-params.avgqual = "AVGQUAL:30"
+include { CSV_TO_TSV        } from "./modules/csv_to_tsv.nf"
+include { SPLIT_BY_COUNTRY  } from "./modules/split_by_country.nf"
 
-include { fastqc as fastqc_raw; fastqc as fastqc_trim } from "../../modules/fastqc" 
-include { trimmomatic } from "../../modules/trimmomatic"
-
-// Running a workflow with the defined processes here.  
 workflow {
-    log.info """\
-        LIST OF PARAMETERS
-    ================================
-                GENERAL
-    Reads            : ${params.reads}
-    Output-folder    : ${params.outdir}/
+    def input_ch = Channel.fromPath(params.input, checkIfExists:true)
 
-            TRIMMOMATIC
-    Threads          : ${params.threads}
-    Sliding window   : ${params.slidingwindow}
-    Avg quality      : ${params.avgqual}
-    """
+    // Convert CSV to TSV
+    CSV_TO_TSV(input_ch)
 
-    // Channels are being created. 
-    def read_pairs_ch = Channel
-        .fromFilePairs(params.reads, checkIfExists:true)
-
-
-    read_pairs_ch.view()
-    fastqc_raw(read_pairs_ch) 
-    trimmomatic(read_pairs_ch)
-    fastqc_trim(trimmomatic.out.trim_fq)
+    // Split the TSV per country
+    SPLIT_BY_COUNTRY(CSV_TO_TSV.out.tsv)
 }

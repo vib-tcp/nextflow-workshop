@@ -4,6 +4,7 @@ process SUMMARIZE {
 
     input:
     tuple val(country), path(file)
+    path(input_tsv)
 
     output:
     tuple val(country), path("*.txt"), emit: summary

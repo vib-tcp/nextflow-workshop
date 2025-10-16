@@ -36,4 +36,10 @@ workflow {
     PLOT(summary_ch)
     PLOT.out.lengths.view()
     PLOT.out.weights.view()
+
+    workflow.onComplete = {
+        println "Pipeline completed at: ${workflow.complete}"
+        println "Time to complete workflow execution: ${workflow.duration}"
+        println "Execution status: ${workflow.success ? 'Succesful' : 'Failed' }"
+    }
 }

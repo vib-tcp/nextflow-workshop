@@ -1656,31 +1656,29 @@ Using the same process twice in the same workflow is not allowed by Nextflow due
 
 ```groovy
 include { CSV_TO_TSV as CSV_TO_TSV_MAIN; CSV_TO_TSV as CSV_TO_TSV_SUBSETS } from "./modules/csv_to_tsv.nf"
-
 ```
 
-Now we're ready to use a process, defined in a module, multiple times in a workflow.
+Now we're ready to use a process, defined in a module.
 
 Investigate & run the script `exercises/03_first_pipeline/modules.nf` which contains the following code snippet
 
 ```groovy
-...
-include { fastqc as fastqc_raw; fastqc as fastqc_trim } from "../../modules/fastqc"
-include { trimmomatic } from "../../modules/trimmomatic"
+include { CSV_TO_TSV        } from "./modules/csv_to_tsv.nf"
+include { SPLIT_BY_COUNTRY  } from "./modules/split_by_country.nf"
 
-// Running a workflow with the defined processes here.
+params.input = "$launchDir/data/crocodile_dataset.csv"
+params.outdir = "$launchDir/results"
+
 workflow {
-  def read_pairs_ch = Channel
-    .fromFilePairs(params.reads, checkIfExists:true)
+    def input_ch = Channel.fromPath(params.input, checkIfExists:true)
 
-  read_pairs_ch.view()
-  fastqc_raw(read_pairs_ch)
-  trimmomatic(read_pairs_ch)
-  fastqc_trim(trimmomatic.out.trim_fq)
+    // Convert CSV to TSV
+    CSV_TO_TSV(input_ch)
+
+    // Split the TSV per country
+    SPLIT_BY_COUNTRY(CSV_TO_TSV.out.tsv)
 }
 ```
-
-Similarly as described above, we can extend this pipeline and map our trimmed reads on a reference genome. First, we'll have to create an index for our genome and afterwards we can map our reads onto it. These modules are called from the main script `RNAseq.nf`.
 
 #### Exercises
 
@@ -1689,14 +1687,17 @@ Similarly as described above, we can extend this pipeline and map our trimmed re
 
 **Exercise 2.6**
 
-In the folder `modules/` find the script `star.nf` which contains two processes: `star_index` and `star_alignment`. Complete the script `RNAseq.nf` so it includes these processes and hence the pipeline is extended with an indexing and alignment step. The parameters used in the modules are already defined for you.
+In the folder `modules/` find the script `summarize/main.nf` which contains a templated process. Complete the script `modules.nf` so that it includes this process and hence the pipeline is extended with a summarizing step. The parameters used in the modules are already defined for you. Here are some requirements to correctly use the module:
+
+1. You are not allowed to change the files in `modules/summarize/`, adjust your pipeline to make sure the input is correct.
+2. Make sure the `SUMMARIZE` process runs once per country. You will need to split up the output from `SPLIT_BY_COUNTRY`, take a look at the [Operators documentation](https://www.nextflow.io/docs/latest/reference/operator.html) to find a suitable operator.
+3. Make sure the input channel has the right structure for the module, remember what operator you should use here?
+4. View the output of the `SUMMARIZE` process.
 
 <div class="admonition admonition-info">
 <p class="admonition-title">Note</p>
 
-STAR is a tool that aligns the sequenced reads in a FASTQ file to a reference genome. This determines where on the genome the read is located so you can create a 'map' of how the genome of the sequenced organism looks like.
-
-STAR index is a tool that creates a reference index from the reference genome so that STAR can do the alignment more easily.
+A templated process is a process where the script code is located in a separate file. This is useful when the script is long or when you want to keep the process code cleaner. A script template is always located in the `templates/` directory in which is located in the same directory as the process script. For this process, the template is called `templates/summarize.py`. Take a look at the script, do you see anything weird in there? Can you explain this?
 
 </div>
 
@@ -1707,154 +1708,66 @@ STAR index is a tool that creates a reference index from the reference genome so
 
 **Solution 2.6**
 
-Solution in `exercises/03_first_pipeline/solutions/2.6_RNAseq.nf`. The following lines were added.
+Solution in `exercises/03_first_pipeline/solutions/summarize.nf`. The following lines were added.
 
 ```groovy
-def genome = Channel.fromPath(params.genome)
-def gtf = Channel.fromPath(params.gtf)
+def split_ch = SPLIT_BY_COUNTRY.out.country_files
+    .flatten()
+    .map { tsv ->
+        // Get the country name from the filename
+        def country = tsv.baseName
+        [ country, tsv ]
+    }
 
-include { star_idx; star_alignment } from "../../modules/star"
+// Create summary for each country
+SUMMARIZE(split_ch, input_ch.first())
 
-workflow {
-  ...
-  star_idx(genome, gtf)
-  star_alignment(trimmomatic.out.trim_fq, star_idx.out.index, gtf)
-}
+SUMMARIZE.out.summary.view()
 ```
 
-****************
+<div class="admonition admonition-info">
+<p class="admonition-title">Note</p>
 
----
+The first input of the process (`split_ch`) is a dataflow channel. The second input of the process (`input_ch`) is a dataflow value. What happens if you remove the `.first()` from the second input and thus make it a dataflow channel?
+
+Do you know of any other operators to convert a dataflow channel to a dataflow value?
+
+More information on this can be found in the [documentation](https://www.nextflow.io/docs/latest/process.html#multiple-inputs)
+
+</div>
+
+****************
 
     {{2-4}}
 ****************
 
 **Exercise 2.7**
 
-In the folder `modules/` find the script `multiqc.nf`. Import the process in the main script so we can use it in the workflow. This process expects all of the zipped and html files from the fastqc processes (raw & trimmed) as one input. Thus it is necessary to use the operators `.mix()` and `.collect()` on the outputs of `fastqc_raw` and `fastqc_trim` to generate one channel with all the files.
+In the folder `modules/` find the script `plot.nf`. Import the process in the main script so we can use it in the workflow. This process expects all country summaries as one input. Thus it is necessary to use the operator `.collect()` on the outputs of `SUMMARIZE` to generate one channel with all the files.
+
+What kind of dataflow is the input channel of the `PLOT` process?
 ****************
 
     {{3-4}}
 ****************
 **Solution 2.7**
 
-Solution in `exercises/03_first_pipeline/solutions/2.7_RNAseq.nf`. The following lines were added.
+Solution in `exercises/03_first_pipeline/solutions/final_pipeline.nf`. The following lines were added.
 
 ```groovy
-include { multiqc } from "../../modules/multiqc"
-
-workflow {
-  ...
-  def multiqc_input = fastqc_raw.out.fastqc_out
-    .mix(fastqc_trim.out.fastqc_out)
+def summary_ch = SUMMARIZE.out.summary
+    .map { _country, summary ->
+        summary
+    }
     .collect()
 
-  multiqc(multiqc_input)
-}
+// Plot the summaries
+PLOT(summary_ch)
+PLOT.out.lengths.view()
+PLOT.out.weights.view()
 ```
 
-****************
-
-
-#### Interlude
-
-You might have noticed that the star_alignment process was only executed once in exercise 2.6 and 2.7, while we expect the process to be executed twice (we have 2 samples). This is due to the way we have defined the input for the star_alignment process.
-
-```groovy
-process star_alignment {
-    publishDir "${params.outdir}/mapped-reads/", mode: 'copy', overwrite: true
-    label 'high'
-    container "quay.io/biocontainers/star:2.6.1d--0"
-
-    input:
-    tuple val(sample), path(reads)
-    path indexDir
-    path gtf
-
-    output:
-    path("*.bam"), emit: align_bam
-
-    script:
-    """
-    STAR  \\
-        --readFilesIn ${reads} \\
-        --runThreadN ${task.cpus} \\
-        --outSAMtype BAM SortedByCoordinate \\
-        --sjdbGTFfile ${gtf} \\
-        --outFileNamePrefix ${sample}. \\
-        --genomeDir ${indexDir}
-    """
-}
-```
-
-As you can see, we have defined 3 separate input channels for our process.
-
-
-When two or more channels are declared as process inputs, the process waits until there is a complete input configuration, i.e. until it receives a value from each input channel. When this condition is satisfied, the process consumes a value from each channel and launches a new task, repeating this logic until one or more channels are empty.
-More information can be found in the [documentation](https://www.nextflow.io/docs/latest/process.html#multiple-input-channels)
-
-Because we have more than 1 sample in the first input channel, but only 1 entry for both the second (indexDir) and third (gtf) channel, the process will only be executed once.
-
-
-#### Exercises
-
-    {{0-2}}
-****************
-
-**Exercise 2.8**
-
-Find a way to restructure the input channel for the `star_alignment` process so it will correctly be exectuted for each sample instead of just once.
-
-- Use channel operators to combine the multiple input channels
-- Don't forget to change the input declaration in the process as well
-
-****************
-
-    {{1-2}}
-****************
-
-**Solution 2.8**
-
-Solution in `exercises/03_first_pipeline/solutions/2.8_RNAseq.nf`. The following lines were added.
-
-```groovy
-workflow {
-  ...
-  // Combine channels
-  def alignment_input = trimmomatic.out.trim_fq
-    .combine(star_idx.out.index)
-    .combine(gtf)
-
-  alignment_input.view()
-
-  // Mapping
-  star_alignment(alignment_input)
-}
-```
-
-The following adjustments were made to the input declaration block of the `star.nf` module.
-
-```groovy
-process star_alignment {
-    ...
-    input:
-    // (trim_fq, IDX.out, gtf)
-    tuple val(sample), path(reads), path(indexDir), path(gtf)
-
-    ...
-}
-
-```
-
-<div class="admonition admonition-info">
-<p class="admonition-title">Note</p>
-
-This exercise could also be solved by converting the index and gtf channels to value channels.
-
-</div>
-
-
----
+`summary_ch` is a dataflow value
 
 This pipeline is still subject to optimizations which will be further elaborated in the next chapter.
 
@@ -1863,56 +1776,70 @@ This pipeline is still subject to optimizations which will be further elaborated
 
 ### Subworkflows
 
-The workflow keyword allows the definition of **sub-workflow** components that enclose the invocation of one or more processes and operators. Here we have created a sub-workflow for a hypothetical `hisat` aligner.
+The `workflow` keyword allows the definition of **sub-workflow** components that enclose the invocation of one or more processes and operators. Here we have created a sub-workflow for converting a CSV to a TSV file.
 
 ```groovy
-workflow hisat {
-  hisat_index(arg1)
-  hisat_alignment(arg1, arg2)
+workflow CONVERT {
+    CSV_TO_TSV(input_ch)
 }
 ```
 
-<div class="admonition admonition-info">
-<p class="admonition-title">Note</p>
-
-Hisat is alternative to STAR to align reads to a reference genome.
-
-</div>
-
-These sub-workflows allow us to use this workflow from within another workflow. The workflow that does not cary any name is considered to be the main workflow and will be executed implicitly. This is thus the entry point of the pipeline, however alternatively we can overwrite it by using the `-entry` parameter. The following code snippet defines two sub-workflows and one main workflow. If we would only be interested in the star alignment workflow, then we would use `nextflow run pipeline.nf -entry star`.
+These sub-workflows allow us to use this workflow from within another workflow. The workflow that does not cary any name is considered to be the main workflow and will be executed implicitly. This next example shows a simple conversion of our pipeline to use subworkflows. 
 
 ```groovy
-workflow star {
-  take:
-  arg1
-  arg2
-  arg3
+...
+workflow CREATE_SUMMARIES {
+    take:
+    country_files
+    input_ch
 
-  main:
-  star_index(arg1, arg2)
-  star_alignment(arg1, arg2, arg3)
+    main:
+    def split_ch = country_files
+        .flatten()
+        .map { tsv ->
+            // Get the country name from the filename
+            def country = tsv.baseName
+            [ country, tsv ]
+        }
+
+    // Create summary for each country
+    SUMMARIZE(split_ch, input_ch.first())
+
+    emit:
+    summary = SUMMARIZE.out.summary
 }
 
-workflow hisat2 {
-  take:
-  arg1
-  arg2
+workflow CONVERT {
+    take:
+    input_ch
 
-  main:
-  hisat_index(arg1)
-  hisat_alignment(arg1, arg2)
+    main:
+    CSV_TO_TSV(input_ch)
+
+    emit:
+    tsv = CSV_TO_TSV.out.tsv
 }
 
 workflow {
-  star(arg1, arg2, arg3)
-  hisat2(arg1, arg2)
+    def input_ch = Channel.fromPath(params.input, checkIfExists:true)
+
+    // Convert CSV to TSV
+    CONVERT(input_ch)
+
+    // Split the TSV per country
+    SPLIT_BY_COUNTRY(CONVERT.out.tsv)
+
+    // Create summary for each country
+    CREATE_SUMMARIES(SPLIT_BY_COUNTRY.out.country_files, input_ch)
+
+    CREATE_SUMMARIES.out.summary.view()
 }
 ```
 
 <div class="admonition admonition-info">
 <p class="admonition-title">Note</p>
 
-The `take:` declaration block defines the input channels of the sub-workflow, `main:` is the declaration block that contains the processes and is required in order to separate the inputs from the workflow body. These options are useful when the pipeline is growing with multiple entry-levels to keep a tidy overview.
+The `take:` declaration block defines the input channels of the sub-workflow, `main:` is the declaration block that contains the processes and is required in order to separate the inputs from the workflow body. `emit:` is the declaration of the outputs of the worklos. These options are useful when the pipeline is growing with multiple entry-levels to keep a tidy overview.
 
 </div>
 
@@ -1924,7 +1851,7 @@ The `take:` declaration block defines the input channels of the sub-workflow, `m
 
 **Extra exercise 1**
 
-Extend the workflow pipeline with a final note printed on completion of the workflow. Read more about global variables [here](https://www.nextflow.io/docs/latest/reference/stdlib.html#constants) and global functions [here](https://www.nextflow.io/docs/latest/reference/stdlib.html#functions).
+Extend the workflow pipeline with a final note printed on completion of the workflow. Read more about global variables and functions [here](https://www.nextflow.io/docs/latest/reference/stdlib-namespaces.html).
 
 ****************
 
@@ -1933,43 +1860,34 @@ Extend the workflow pipeline with a final note printed on completion of the work
 ****************
 **Solution 1**
 
-The solution is given in `exercises/03_first_pipeline/solutions/ex.1_RNAseq.nf`
+Solution available in `exercises/03_first_pipeline/solutions/final_pipeline_onComplete.nf`. The added lines are:
+
+```
+workflow {
+    ...
+
+    workflow.onComplete = {
+        println "Pipeline completed at: ${workflow.complete}"
+        println "Time to complete workflow execution: ${workflow.duration}"
+        println "Execution status: ${workflow.success ? 'Succesful' : 'Failed' }"
+    }
+}
+```
 ****************
-
-
----
 
     {{2-4}}
 ****************
+
 **Extra exercise 2**
-
-Adapt the `exercises/03_first_pipeline/solutions/ex.1_RNAseq.nf` script so it uses Salmon as an aligner and quantifier. In our temporary solution the alignment with Star has been replaced with Salmon, it would be better to create a subworkflow so you can choose upon `-entry` to work with Star or Salmon.
-
-****************
-
-    {{3-4}}
-****************
-**Solution 2**
-
-The solution is given in `exercises/03_first_pipeline/solutions/ex.2_RNAseq.nf`.
-
-****************
-
----
-
-    {{4-6}}
-****************
-
-**Extra exercise 3**
 
 Write a Nextflow script for a tool that you use in your research. Use the same approach with parameters, channels, process in a module, and a workflow.
 
 ****************
 
-    {{5-6}}
+    {{3-4}}
 ****************
 
-**Solution 3**
+**Solution 2**
 
 If you are stuck, don't hesitate to ask for help!
 
