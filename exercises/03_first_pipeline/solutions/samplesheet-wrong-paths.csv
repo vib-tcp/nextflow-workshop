@@ -1,0 +1,4 @@
+sample,fastq_1,fastq_2
+ggal_gut,wrong/path/ggal_gut_1.fq.gz,wrong/path/ggal_gut_2.fq.gz
+ggal_liver,wrong/path/ggal_liver_1.fq.gz,wrong/path/ggal_liver_2.fq.gz
+
