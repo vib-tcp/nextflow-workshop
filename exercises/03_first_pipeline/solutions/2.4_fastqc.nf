@@ -1,6 +1,6 @@
 #!/usr/bin/env nextflow
 
-params.samplesheet = "${launchDir}/exercises/03_first_pipeline/samplesheet.csv"
+params.samplesheet = "${launchDir}/exercises/03_first_pipeline/solutions/samplesheet-wrong-paths.csv"
 
 /**
  * Quality control fastq
@@ -19,9 +19,9 @@ process fastqc {
 }
 
 workflow {
-    def reads_ch = channel.fromPath( params.samplesheet, checkIfExists: true )
+    def reads_ch = channel.fromPath( params.samplesheet )
         .splitCsv(header:true)
-        .map{ row -> tuple( row.sample, [file(row.fastq_1), file(row.fastq_2)] ) }
+        .map{ row -> tuple( row.sample, [file(row.fastq_1, checkIfExists: true), file(row.fastq_2, checkIfExists: true)] ) }
         .view()
 
     fastqc(reads_ch)

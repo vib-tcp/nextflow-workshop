@@ -1660,7 +1660,8 @@ Modify the workflow so it reads this samplesheet and correctly handles paired-en
 
 - Create a new parameter for the samplesheet to replace the reads parameter (`params.reads`)
 - Generate a channel from the samplesheet using the appropriate channel factory
-- Use the [map](https://www.nextflow.io/docs/latest/reference/operator.html#map) operator to transform each item in the channel into a tuple with the following structure: `(sample, [fastq1, fastq2])`
+- Use the [map](https://www.nextflow.io/docs/latest/reference/operator.html#map) operator to transform each item in the channel into a tuple with the following structure: `[sample, [fastq1, fastq2]]`
+- You will need to use a function described in the [namespace documentation](https://www.nextflow.io/docs/latest/reference/stdlib-namespaces.html) to turn the strings with relative paths into actual file objects.
 - Update the `input` declaration in the process (from `path` to a `tuple`).
 
 ****************
@@ -1705,11 +1706,15 @@ Run in the background and push output of nextflow to the log file. No need of ex
 
 **Exercise 2.4**
 
-Check if the samplesheet file exist ([`checkIfExists`](https://www.nextflow.io/docs/latest/reference/channel.html#frompath)) upon creating the channels and invoke an error by running the nextflow script with wrong reads, e.g.
+Verify that the fastq files described in the samplesheet exist. Use the correct option for the `file()` function in your `map` operator. You can find how to do this in the [documentation](https://www.nextflow.io/docs/latest/reference/stdlib-namespaces.html#global-namespace). 
 
-```
-nextflow run exercises/03_first_pipeline/fastqc.nf --samplesheet wrongfilename
-```
+Then intentionally trigger an error by specifying wrong file paths in your samplesheet as follows: 
+
+| sample      | fastq\_1                        | fastq\_2                        |
+| ----------- | ------------------------------- | ------------------------------- |
+| ggal\_gut   | wrong/path/ggal\_gut\_1.fq.gz   | wrong/path/ggal\_gut\_2.fq.gz   |
+| ggal\_liver | wrong/path/ggal\_liver\_1.fq.gz | wrong/path/ggal\_liver\_2.fq.gz |
+
 ****************
 
     {{7-8}}
@@ -2614,7 +2619,7 @@ Fastp allows us to specify the forward and reverse primer sequences that should 
 
 <div class="admonition admonition-abstract">
 <p class="admonition-title">Objective 4</p>
-Write a process that executes Cutadapt to filter and trim the reads.
+Write a process that executes Fastp to filter and trim the reads.
 </div>
 
 
